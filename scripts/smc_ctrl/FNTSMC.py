@@ -96,3 +96,31 @@ class fntsmc_pos:
         self.sigma_o1 = np.zeros(self.dim)
         self.so = self.sigma_o + self.lmd * self.sigma_o1
         self.control = param.ctrl0
+
+    def get_param_from_actor(self, action_from_actor: np.ndarray, update_k2: bool = True, update_z: bool = False):
+        """
+        @param action_from_actor:
+        @return:
+        """
+        if np.min(action_from_actor) < 0:
+            print('ERROR!!!!')
+        if update_z:
+            for i in range(3):
+                if action_from_actor[i] > 0:
+                    self.k1[i] = action_from_actor[i]
+                if action_from_actor[i + 3] > 0 and update_k2:
+                    self.k2[i] = action_from_actor[i + 3]
+            if action_from_actor[6] > 0:
+                self.gamma[:] = action_from_actor[6]
+            if action_from_actor[7] > 0:
+                self.lmd[:] = action_from_actor[7]
+        else:
+            for i in range(2):
+                if action_from_actor[i] > 0:
+                    self.k1[i] = action_from_actor[i]
+                if action_from_actor[i + 3] > 0 and update_k2:
+                    self.k2[i] = action_from_actor[i + 3]
+            if action_from_actor[6] > 0:
+                self.gamma[0: 2] = action_from_actor[6]
+            if action_from_actor[7] > 0:
+                self.lmd[0: 2] = action_from_actor[7]
