@@ -22,6 +22,9 @@ from smc_ctrl.ref_cmd import *
 from smc_ctrl.utils import *
 
 
+print('No error for import python modules.')
+
+
 def state_cb(msg):
     global current_state
     current_state = msg
