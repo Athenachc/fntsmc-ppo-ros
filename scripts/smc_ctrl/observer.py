@@ -52,9 +52,9 @@ class neso:
         self.dot_z1 = self.z2 + self.l1 / self.r * self.fal(xi=self.r ** 2 * self.xi)
         self.dot_z2 = self.z3 + self.l2 * self.fal(xi=self.r ** 2 * self.xi) + syst_dynamic
         self.dot_z3 = self.r * self.l3 * self.fal(xi=self.r ** 2 * self.xi)
-        self.z1 = self.z1 + self.dot_z1 * self.dt
-        self.z2 = self.z2 + self.dot_z2 * self.dt
-        self.z3 = self.z3 + self.dot_z3 * self.dt
+        self.z1 = self.z1 + self.dot_z1 * self.dt       # 观测 pos
+        self.z2 = self.z2 + self.dot_z2 * self.dt       # 观测 vel
+        self.z3 = self.z3 + self.dot_z3 * self.dt       # 观测 delta
         delta_obs = self.z3.copy()
         dot_delta_obs = self.dot_z3.copy()
         return delta_obs, dot_delta_obs

@@ -271,15 +271,12 @@ if __name__ == "__main__":
 
     '''load actor'''
     opt_pos = PPOActor_Gaussian(state_dim=6, action_dim=8)
-    optPathPos = os.getcwd() + '/src/adp-smc-uav-ros/nets/pos_new1-260/'
-    # optPathPos = os.getcwd() + '/src/adp-smc-uav-ros/nets/opt1/'
-    # optPathPos = os.getcwd() + '/src/adp-smc-uav-ros/nets/opt2/'
+    # optPathPos = os.getcwd() + '/src/adp-smc-uav-ros/nets/pos_new1-260/'  # 仿真最好的，实际最差的
+    optPathPos = os.getcwd() + '/src/adp-smc-uav-ros/nets/opt1/'        # 最好的
+    # optPathPos = os.getcwd() + '/src/adp-smc-uav-ros/nets/opt2/'      # 第二好的
     opt_pos.load_state_dict(torch.load(optPathPos + 'actor'))
     pos_norm = get_normalizer_from_file(6, optPathPos, 'state_norm.csv')
     '''load actor'''
-
-    CONTROLLER = 'RL'	# or 'FNTSMC'
-    USE_OBSERVER = False
 
     while not rospy.is_shutdown():
         t = rospy.Time.now().to_sec()
@@ -291,12 +288,20 @@ if __name__ == "__main__":
                 uav_ros = UAV_ROS(m=0.797, g=9.8, kt=1e-3, dt=DT)
                 controller = fntsmc_pos(pos_ctrl_param)
 
-                obs = neso(l1=np.array([2., 2., 6.]),
-                           l2=np.array([2., 2., 3.]),
-                           l3=np.array([0.8, 0.8, 3.]),
-                           r=np.array([30., 20., 15.]),
+                # obs = neso(l1=np.array([3., 3., 3.]),
+                #        l2=np.array([3., 3., 3.]),
+                #        l3=np.array([1., 1., 3.]),
+                #        r=np.array([20., 20., 20.]),
+                #        k1=np.array([0.7, 0.7, 0.7]),
+                #        k2=np.array([0.001, 0.001, 0.001]),
+                #        dim=3,
+                #        dt=DT)
+                obs = neso(l1=np.array([0.1, 0.1, 0.3]),
+                           l2=np.array([0.1, 0.1, 0.15]),
+                           l3=np.array([0.08, 0.08, 0.08]),
+                           r=np.array([0.5, 0.5, 0.5]),     # r 越小，增益越小 奥利给兄弟们干了
                            k1=np.array([0.7, 0.7, 0.7]),
-                           k2=np.array([0.001, 0.001, 0.001]),
+                           k2=np.array([0.01, 0.01, 0.01]),
                            dim=3,
                            dt=DT)
 
@@ -329,17 +334,19 @@ if __name__ == "__main__":
             e = uav_ros.eta() - eta_d
             de = uav_ros.dot_eta() - dot_eta_d
 
+            USE_OBSERVER = True
             if USE_OBSERVER:
                 syst_dynamic = -uav_ros.kt / uav_ros.m * uav_ros.dot_eta() + uav_ros.A()
                 observe, _ = obs.observe(x=uav_ros.eta(), syst_dynamic=syst_dynamic)
             else:
                 observe = np.zeros(3)
 
+            CONTROLLER = 'RL'  # or 'FNTSMC'
             '''3. Update the parameters of FNTSMC if RL is used'''
             if CONTROLLER == 'RL':
                 pos_s = np.concatenate((e, de))
                 param_pos = opt_pos.evaluate(pos_norm(pos_s))  # new position control parameter
-                controller.get_param_from_actor(param_pos, update_k2=True)  # update position control parameter
+                controller.get_param_from_actor(param_pos, update_k2=True, update_z=False)  # update position control parameter
 
             '''3. generate phi_d, theta_d, throttle'''
             controller.control_update(uav_ros.kt, uav_ros.m, uav_ros.uav_vel(), e, de, dot_eta_d, dot2_eta_d, obs=observe)
