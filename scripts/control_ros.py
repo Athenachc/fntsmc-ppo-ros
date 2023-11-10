@@ -299,10 +299,10 @@ if __name__ == "__main__":
                 #        k2=np.array([0.001, 0.001, 0.001]),
                 #        dim=3,
                 #        dt=DT)
-                obs = neso(l1=np.array([0.1, 0.1, 0.3]),
-                           l2=np.array([0.1, 0.1, 0.15]),
+                obs = neso(l1=np.array([0.1, 0.1, 0.2]),
+                           l2=np.array([0.1, 0.1, 0.2]),
                            l3=np.array([0.08, 0.08, 0.08]),
-                           r=np.array([0.5, 0.5, 0.5]),     # r 越小，增益越小 奥利给兄弟们干了
+                           r=np.array([0.25, 0.25, 0.25]),     # r 越小，增益越小 奥利给兄弟们干了
                            k1=np.array([0.7, 0.7, 0.7]),
                            k2=np.array([0.01, 0.01, 0.01]),
                            dim=3,
@@ -344,7 +344,7 @@ if __name__ == "__main__":
             else:
                 observe = np.zeros(3)
 
-            CONTROLLER = 'RL'  # or 'FNTSMC'
+            CONTROLLER = 'FNTSMC'  # or 'RL'
             '''3. Update the parameters of FNTSMC if RL is used'''
             if CONTROLLER == 'RL':
                 pos_s = np.concatenate((e, de))

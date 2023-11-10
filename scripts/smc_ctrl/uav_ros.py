@@ -32,7 +32,7 @@ class UAV_ROS:
 		self.dt = dt
 		self.n = 0  # 记录走过的拍数
 		self.time = 0.  # 当前时间
-		self.time_max = 40  # 每回合最大时间
+		self.time_max = 60  # 每回合最大时间
 
 		'''control'''
 		self.throttle = self.m * self.g  # 油门
