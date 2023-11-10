@@ -81,7 +81,7 @@ def thrust_2_throttle(thrust: float):
 
     """
     '''gazebo 线性模型'''
-    k = 0.391 / 0.797 / 9.8
+    k = 0.31 / 0.727 / 9.8
     _throttle = k * thrust
     _throttle = max(min(_throttle, 0.9), 0.10)
     '''gazebo 线性模型'''
@@ -288,7 +288,7 @@ if __name__ == "__main__":
             # ok = True
             if ok:
                 print('OFFBOARD, start to initialize...')
-                uav_ros = UAV_ROS(m=0.797, g=9.8, kt=1e-3, dt=DT)
+                uav_ros = UAV_ROS(m=0.722, g=9.8, kt=1e-3, dt=DT)
                 controller = fntsmc_pos(pos_ctrl_param)
 
                 # obs = neso(l1=np.array([3., 3., 3.]),
