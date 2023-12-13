@@ -117,7 +117,7 @@ if __name__ == '__main__':
         ref_cmd.csv:    t rx ry rz r_phi(roll) r_theta(pitch) r_psi(yaw)
         uav_state.csv:  t x y z vx vy vz phi theta psi p q r
     """
-    path = os.path.dirname(__file__) + '/'
+    path = os.path.dirname(os.path.abspath(__file__)) + '/'
     controlData = pd.read_csv(path + 'control.csv', header=0).to_numpy()
     observeData = pd.read_csv(path + 'observe.csv', header=0).to_numpy()
     ref_cmdData = pd.read_csv(path + 'ref_cmd.csv', header=0).to_numpy()

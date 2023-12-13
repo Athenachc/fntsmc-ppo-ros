@@ -8,7 +8,7 @@ from utils import *
 
 
 class UAV_ROS:
-	def __init__(self, m: float = 1.5, g: float = 9.8, kt: float = 1e-3, dt:float = 0.01):
+	def __init__(self, m: float = 1.5, g: float = 9.8, kt: float = 1e-3, dt:float = 0.01, time_max: float=60.):
 		self.m = m  # 无人机质量
 		self.g = g  # 重力加速度
 		self.kt = kt  # 平移阻尼系数
@@ -32,7 +32,7 @@ class UAV_ROS:
 		self.dt = dt
 		self.n = 0  # 记录走过的拍数
 		self.time = 0.  # 当前时间
-		self.time_max = 60  # 每回合最大时间
+		self.time_max = time_max  # 每回合最大时间
 
 		'''control'''
 		self.throttle = self.m * self.g  # 油门
