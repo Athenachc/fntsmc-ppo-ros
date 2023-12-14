@@ -25,6 +25,14 @@ from smc_ctrl.utils import *
 print('No error for import python modules.')
 
 
+def euler_2_quaternion(phi, theta, psi):
+	w = C(phi / 2) * C(theta / 2) * C(psi / 2) + S(phi / 2) * S(theta / 2) * S(psi / 2)
+	x = S(phi / 2) * C(theta / 2) * C(psi / 2) - C(phi / 2) * S(theta / 2) * S(psi / 2)
+	y = C(phi / 2) * S(theta / 2) * C(psi / 2) + S(phi / 2) * C(theta / 2) * S(psi / 2)
+	z = C(phi / 2) * C(theta / 2) * S(psi / 2) - S(phi / 2) * S(theta / 2) * C(psi / 2)
+	return [x, y, z, w]
+
+
 def state_cb(msg):
 	global current_state
 	current_state = msg
@@ -93,10 +101,18 @@ def approaching(_t: float, ap_flag: bool, threshold: float):
 	pose.pose.position.x = _ref[0]
 	pose.pose.position.y = _ref[1]
 	pose.pose.position.z = _ref[2]
-	uav_pos = uav_odom_2_uav_state(uav_odom)[0: 3]
+
+	cmd_q = tf.transformations.quaternion_from_euler(0., 0., _ref[3])
+	pose.pose.orientation.x = cmd_q[0]
+	pose.pose.orientation.y = cmd_q[1]
+	pose.pose.orientation.z = cmd_q[2]
+	pose.pose.orientation.w = cmd_q[3]
+
+	uav_state = uav_odom_2_uav_state(uav_odom)
+	uav_pos = uav_state[0:3]
 	local_pos_pub.publish(pose)
 	_bool = False
-	if np.linalg.norm(_ref[0: 3] - uav_pos) < 0.25:
+	if (np.linalg.norm(_ref[0: 3] - uav_pos) < 0.25) and (np.linalg.norm(_ref[3] - uav_state[8]) < deg2rad(5)):
 		if ap_flag:
 			_bool = True if rospy.Time.now().to_sec() - _t >= threshold else False
 		else:
@@ -231,14 +247,6 @@ if __name__ == "__main__":
 	print('Approaching...')
 	global_flag = 1
 
-	'''generate reference command'''
-	# ref_amplitude = np.array([0., 0., 0., 0])  # xd yd zd psid 振幅
-	ref_amplitude = np.array([1.5, 1.5, 0.3, 0])  # xd yd zd psid 振幅
-	ref_period = np.array([5, 5, 5, 10])  # xd yd zd psid 周期
-	ref_bias_a = np.array([0, 0, 1.0, 0])  # xd yd zd psid 幅值偏移
-	ref_bias_phase = np.array([np.pi / 2, 0, 0, 0])  # xd yd zd psid 相位偏移
-	'''generate reference command'''
-
 	t0 = rospy.Time.now().to_sec()
 	approaching_flag = False
 
@@ -265,6 +273,10 @@ if __name__ == "__main__":
 	# OBSERVER = 'neso'
 	# OBSERVER = 'none'
 
+	ref_period = np.array([5, 5, 5, 10])  # xd yd zd psid 周期
+	ref_bias_a = np.array([0, 0, 1.0, deg2rad(0)])  # xd yd zd psid 幅值偏移
+	ref_bias_phase = np.array([np.pi / 2, 0, 0, 0])  # xd yd zd psid 相位偏移
+
 	while not rospy.is_shutdown():
 		t = rospy.Time.now().to_sec()
 		if global_flag == 1:  # approaching
@@ -272,7 +284,7 @@ if __name__ == "__main__":
 			# ok = True
 			if ok:
 				print('OFFBOARD, start to initialize...')
-				uav_ros = UAV_ROS(m=0.722, g=9.8, kt=1e-3, dt=DT, time_max=30)
+				uav_ros = UAV_ROS(m=0.722, g=9.8, kt=1e-3, dt=DT, time_max=20)
 				controller = fntsmc_pos(pos_ctrl_param)
 				if OBSERVER == 'neso':
 					obs = neso(l1=np.array([0.1, 0.1, 0.2]),
@@ -304,18 +316,25 @@ if __name__ == "__main__":
 
 				print('Control...')
 				t0 = rospy.Time.now().to_sec()
+				[uav_ros.x, uav_ros.y, uav_ros.z,
+				 uav_ros.vx, uav_ros.vy, uav_ros.vz,
+				 uav_ros.phi, uav_ros.theta, uav_ros.psi,
+				 uav_ros.p, uav_ros.q, uav_ros.r] = uav_odom_2_uav_state(uav_odom)
 				global_flag = 2
 		elif global_flag == 2:  # control
 			t_now = round(t - t0, 4)
 			if uav_ros.n % 100 == 0:
-				print('time: ', t_now, data_record.index)
+				print('time: ', t_now)
 
 			'''1. generate reference command and uncertainty'''
-			rax = max(min(0.5 * t_now, 1.5), 0.0)
-			ray = max(min(0.5 * t_now, 1.5), 0.0)
-			raz = max(min(0.06 * t_now, 0.3), 0.0)
-			rapsi = max(min(0.5 * t_now, 0), 0.0)
+			rax = max(min(0.5 * t_now, 0.), 1.5)  # 1.5
+			ray = max(min(0.5 * t_now, 0.), 1.5)  # 1.5
+			raz = max(min(0.06 * t_now, 0.), 0.3)  # 0.3
+			rapsi = max(min(0.5 * t_now, deg2rad(0)), 0.0)  # pi / 3
 			ref_amplitude = np.array([rax, ray, raz, rapsi])
+			# ref_period = np.array([5, 5, 5, 10])
+			# ref_bias_a = np.array([0, 0, 1.0, deg2rad(0)])
+			# ref_bias_phase = np.array([np.pi / 2, 0, 0, 0])
 			ref, dot_ref, dot2_ref, dot3_ref = ref_uav(t_now,
 													   ref_amplitude,
 													   ref_period,
@@ -340,7 +359,8 @@ if __name__ == "__main__":
 			else:
 				observe = np.zeros(3)
 
-			CONTROLLER = 'RL'  # or 'FNTSMC'
+			# CONTROLLER = 'FNTSMC'
+			CONTROLLER = 'RL'
 			'''3. Update the parameters of FNTSMC if RL is used'''
 			if CONTROLLER == 'RL':
 				pos_s = np.concatenate((e, de))
@@ -349,18 +369,19 @@ if __name__ == "__main__":
 
 			'''3. generate phi_d, theta_d, throttle'''
 			controller.control_update(uav_ros.kt, uav_ros.m, uav_ros.uav_vel(), e, de, dot_eta_d, dot2_eta_d, obs=observe)
-			phi_d, theta_d, uf = uo_2_ref_angle_throttle(controller.control, uav_ros.uav_att(),
-														 uav_ros.m, uav_ros.g,
+			phi_d, theta_d, uf = uo_2_ref_angle_throttle(controller.control,
+														 uav_ros.uav_att(),
+														 ref[3],
+														 uav_ros.m,
+														 uav_ros.g,
 														 limit=[np.pi / 4, np.pi / 4],
 														 att_limitation=True)
-			# phi_d = 0.
-			# theta_d = 0.
-			# uf = uav_ros.m * uav_ros.g
 
 			'''4. publish'''
 			ctrl_cmd.header.stamp = rospy.Time.now()
 			ctrl_cmd.type_mask = AttitudeTarget.IGNORE_ROLL_RATE + AttitudeTarget.IGNORE_PITCH_RATE + AttitudeTarget.IGNORE_YAW_RATE
-			cmd_q = tf.transformations.quaternion_from_euler(phi_d, theta_d, ref[3])  # ref[3] - psi_d
+			# cmd_q = tf.transformations.quaternion_from_euler(phi_d, theta_d, ref[3], axes='sxyz')
+			cmd_q = euler_2_quaternion(phi_d, theta_d, ref[3])
 			ctrl_cmd.orientation.x = cmd_q[0]
 			ctrl_cmd.orientation.y = cmd_q[1]
 			ctrl_cmd.orientation.z = cmd_q[2]

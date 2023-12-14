@@ -1,7 +1,8 @@
 import numpy as np
+from typing import Union
 
 
-def deg2rad(deg: float) -> float:
+def deg2rad(deg: Union[np.ndarray, float]):
     """
     :brief:         omit
     :param deg:     degree
@@ -10,20 +11,20 @@ def deg2rad(deg: float) -> float:
     return deg * np.pi / 180.0
 
 
-def rad2deg(rad: float) -> float:
+def rad2deg(rad: Union[np.ndarray, float]):
     """
     :brief:         omit
     :param rad:     radian
     :return:        degree
     """
-    return rad * 180.8 / np.pi
+    return rad * 180.0 / np.pi
 
 
-def C(x):
+def C(x: Union[np.ndarray, float, list]):
     return np.cos(x)
 
 
-def S(x):
+def S(x : Union[np.ndarray, float, list]):
     return np.sin(x)
 
 
@@ -33,25 +34,44 @@ def uo_2_ref_angle(uo: np.ndarray, psi_d: float, m: float, uf: float, angle_max:
     asin_phi_d = min(max((ux * np.sin(psi_d) - uy * np.cos(psi_d)) * m / uf, -1), 1)
     phi_d = np.arcsin(asin_phi_d)
     asin_theta_d = min(max((ux * np.cos(psi_d) + uy * np.sin(psi_d)) * m / (uf * np.cos(phi_d)), -1), 1)
+    # asin_theta_d = min(max((ux * np.cos(psi_d) + uy * np.sin(psi_d)) * m / uf, -1), 1)
     theta_d = np.arcsin(asin_theta_d)
     phi_d = max(min(phi_d, angle_max), -angle_max)
     theta_d = max(min(theta_d, angle_max), -angle_max)
     return phi_d, theta_d
 
 
-def uo_2_ref_angle_throttle(control: np.ndarray, attitude: np.ndarray, m: float, g: float, limit=None, att_limitation: bool = False):
+def uo_2_ref_angle_throttle(control: np.ndarray,
+                            attitude: np.ndarray,
+                            psi_d: float,
+                            m: float,
+                            g: float,
+                            limit=None,
+                            att_limitation: bool = False):
+    [phi, theta, psi] = attitude
     ux = control[0]
     uy = control[1]
     uz = control[2]
-    uf = (uz + g) * m / (np.cos(attitude[0]) * np.cos(attitude[1]))
-    asin_phi_d = min(max((ux * np.sin(attitude[2]) - uy * np.cos(attitude[2])) * m / uf, -1), 1)
+
+    # uf = m * np.sqrt(ux ** 2 + uy ** 2 + (uz + g) ** 2)
+    # phi_d = np.arcsin(m * (ux * np.sin(psi_d) - uy * np.cos(psi_d)) / uf)
+    # theta_d = np.arctan((ux * np.cos(psi_d) + uy * np.sin(psi_d)) / (uz + g))
+    uf = (uz + g) * m / (np.cos(phi) * np.cos(theta))
+    az = uf / m
+
+    asin_phi_d = min(max((ux * np.sin(psi_d) - uy * np.cos(psi_d)) / az, -1), 1)
     phi_d = np.arcsin(asin_phi_d)
-    asin_theta_d = min(max((ux * np.cos(attitude[2]) + uy * np.sin(attitude[2])) * m / (uf * np.cos(phi_d)), -1), 1)
+    asin_theta_d = min(max((ux * np.cos(psi_d) + uy * np.sin(psi_d)) / (az * np.cos(phi_d)), -1), 1)
     theta_d = np.arcsin(asin_theta_d)
-    if att_limitation:
-        if limit is not None:
-            phi_d = max(min(phi_d, limit[0]), -limit[0])
-            theta_d = max(min(theta_d, limit[1]), -limit[1])
+
+    # asin_phi_d = min(max((ux * np.sin(psi_d) - uy * np.cos(psi_d)) * m / uf, -1), 1)
+    # phi_d = np.arcsin(asin_phi_d)
+    # asin_theta_d = min(max((ux / uf * m - np.sin(phi) * np.sin(psi)) / (np.cos(phi) * np.cos(psi)), -1), 1)
+    # theta_d = np.arcsin(asin_theta_d)
+
+    if att_limitation and (limit is not None):
+        phi_d = max(min(phi_d, limit[0]), -limit[0])
+        theta_d = max(min(theta_d, limit[1]), -limit[1])
     return phi_d, theta_d, uf
 
 
