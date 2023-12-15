@@ -155,12 +155,12 @@ global_flag = 0  # UAV working mode monitoring
 DT = 0.01
 pos_ctrl_param = fntsmc_param()
 pos_ctrl_param.k1 = np.array([1.2, 0.8, 4.0])
-pos_ctrl_param.k2 = np.array([0.2, 0.6, 0.5])
+pos_ctrl_param.k2 = np.array([0.6, 1.0, 0.5])
 pos_ctrl_param.alpha = np.array([1.2, 1.5, 2.5])  # 原来 alpha_z = 1.2, 1.5, 1.2
 pos_ctrl_param.beta = np.array([0.3, 0.3, 0.75])  # 原来 beta_z = 0.8
-pos_ctrl_param.gamma = np.array([0.2, 0.2, 0.2])
+pos_ctrl_param.gamma = np.array([2, 2, 0.2])
 pos_ctrl_param.lmd = np.array([2.0, 2.0, 2.0])
-pos_ctrl_param.vel_c = np.array([0.0, 0.0, 0.0])  # 0.05, 0.05, -0.005   使用RL的时候，不需要使用补偿了，哈哈哈哈
+pos_ctrl_param.vel_c = np.array([0.3, 0.4, 0.0])  # 0.05, 0.05, -0.005
 pos_ctrl_param.acc_c = np.array([0., 0., 0.])
 pos_ctrl_param.dim = 3
 pos_ctrl_param.dt = DT
@@ -254,6 +254,8 @@ if __name__ == "__main__":
 	uav_ros = None
 	controller = None
 	obs = None
+	obs_xy = None
+	obs_z = None
 	data_record = None
 	'''define controllers and observers'''
 
@@ -267,13 +269,10 @@ if __name__ == "__main__":
 	'''load actor'''
 
 	OBSERVER = 'rd3'
-	obs_xy = None
-	obs_z = None
-	# obs = None
 	# OBSERVER = 'neso'
 	# OBSERVER = 'none'
 
-	ref_period = np.array([5, 5, 5, 10])  # xd yd zd psid 周期
+	ref_period = np.array([10, 10, 10, 10])  # xd yd zd psid 周期
 	ref_bias_a = np.array([0, 0, 1.0, deg2rad(0)])  # xd yd zd psid 幅值偏移
 	ref_bias_phase = np.array([np.pi / 2, 0, 0, 0])  # xd yd zd psid 相位偏移
 
@@ -284,7 +283,7 @@ if __name__ == "__main__":
 			# ok = True
 			if ok:
 				print('OFFBOARD, start to initialize...')
-				uav_ros = UAV_ROS(m=0.722, g=9.8, kt=1e-3, dt=DT, time_max=20)
+				uav_ros = UAV_ROS(m=0.722, g=9.8, kt=1e-3, dt=DT, time_max=30)
 				controller = fntsmc_pos(pos_ctrl_param)
 				if OBSERVER == 'neso':
 					obs = neso(l1=np.array([0.1, 0.1, 0.2]),
@@ -299,7 +298,7 @@ if __name__ == "__main__":
 					obs.set_init(x0=uav_ros.eta(), dx0=uav_ros.dot_eta(), syst_dynamic=syst_dynamic_out)
 				elif OBSERVER == 'rd3':
 					obs_xy = rd3(use_freq=True,
-								 omega=[0.8, 0.78, 0.75],
+								 omega=[0.8, 0.78, 0.75],	# [0.8, 0.78, 0.75]
 								 dim=2,
 								 dt=DT)
 					obs_z = rd3(use_freq=True,
@@ -327,14 +326,13 @@ if __name__ == "__main__":
 				print('time: ', t_now)
 
 			'''1. generate reference command and uncertainty'''
-			rax = max(min(0.5 * t_now, 0.), 1.5)  # 1.5
-			ray = max(min(0.5 * t_now, 0.), 1.5)  # 1.5
-			raz = max(min(0.06 * t_now, 0.), 0.3)  # 0.3
+			# rax = max(min(0.24 * t_now, 1.5), 0.)  # 1.5
+			# ray = max(min(0.24 * t_now, 1.5), 0.)  # 1.5
+			# raz = max(min(0.06 * t_now, 0.3), 0.)  # 0.3
+			rax = ray = 1.5
+			raz = 0.3
 			rapsi = max(min(0.5 * t_now, deg2rad(0)), 0.0)  # pi / 3
 			ref_amplitude = np.array([rax, ray, raz, rapsi])
-			# ref_period = np.array([5, 5, 5, 10])
-			# ref_bias_a = np.array([0, 0, 1.0, deg2rad(0)])
-			# ref_bias_phase = np.array([np.pi / 2, 0, 0, 0])
 			ref, dot_ref, dot2_ref, dot3_ref = ref_uav(t_now,
 													   ref_amplitude,
 													   ref_period,
@@ -369,9 +367,11 @@ if __name__ == "__main__":
 
 			'''3. generate phi_d, theta_d, throttle'''
 			controller.control_update(uav_ros.kt, uav_ros.m, uav_ros.uav_vel(), e, de, dot_eta_d, dot2_eta_d, obs=observe)
+			# psi_d = np.pi - np.arctan2(ref[1] - ref_bias_a[1], ref[0] - ref_bias_a[0])
+			psi_d = ref[3]
 			phi_d, theta_d, uf = uo_2_ref_angle_throttle(controller.control,
 														 uav_ros.uav_att(),
-														 ref[3],
+														 psi_d,
 														 uav_ros.m,
 														 uav_ros.g,
 														 limit=[np.pi / 4, np.pi / 4],
@@ -380,8 +380,8 @@ if __name__ == "__main__":
 			'''4. publish'''
 			ctrl_cmd.header.stamp = rospy.Time.now()
 			ctrl_cmd.type_mask = AttitudeTarget.IGNORE_ROLL_RATE + AttitudeTarget.IGNORE_PITCH_RATE + AttitudeTarget.IGNORE_YAW_RATE
-			# cmd_q = tf.transformations.quaternion_from_euler(phi_d, theta_d, ref[3], axes='sxyz')
-			cmd_q = euler_2_quaternion(phi_d, theta_d, ref[3])
+			cmd_q = tf.transformations.quaternion_from_euler(phi_d, theta_d, psi_d, axes='sxyz')
+			# cmd_q = euler_2_quaternion(phi_d, theta_d, psi_d)
 			ctrl_cmd.orientation.x = cmd_q[0]
 			ctrl_cmd.orientation.y = cmd_q[1]
 			ctrl_cmd.orientation.z = cmd_q[2]
@@ -401,7 +401,7 @@ if __name__ == "__main__":
 			data_block = {'time': uav_ros.time,  # simulation time
 						  'throttle': uf,
 						  'thrust': ctrl_cmd.thrust,
-						  'ref_angle': np.array([phi_d, theta_d, ref[3]]),
+						  'ref_angle': np.array([phi_d, theta_d, psi_d]),
 						  'ref_pos': ref[0: 3],
 						  'ref_vel': dot_ref[0: 3],
 						  'd_out_obs': observe,
