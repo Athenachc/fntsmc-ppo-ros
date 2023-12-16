@@ -70,9 +70,15 @@ class robust_differentiator_3rd:
 				 n2: Union[np.ndarray, list] = np.array([0, 0, 0]),
 				 n3: Union[np.ndarray, list] = np.array([0, 0, 0]),
 				 use_freq: bool = False,
-				 omega: Union[np.ndarray, list] = np.array([0, 0, 0]),
+				 omega: Union[np.ndarray, list] = np.atleast_2d([0, 0, 0]),
 				 dim: int = 3,
 				 dt: float = 0.001):
+		self.m1 = np.zeros(dim)
+		self.m2 = np.zeros(dim)
+		self.m3 = np.zeros(dim)
+		self.n1 = np.zeros(dim)
+		self.n2 = np.zeros(dim)
+		self.n3 = np.zeros(dim)
 		self.a1 = 3. / 4.
 		self.a2 = 2. / 4.
 		self.a3 = 1. / 4.
@@ -80,15 +86,17 @@ class robust_differentiator_3rd:
 		self.b2 = 6. / 4.
 		self.b3 = 7. / 4.
 		if use_freq:
-			m1n1 = omega[0] + omega[1] + omega[2]
-			m2n2 = omega[0] * omega[1] + omega[0] * omega[2] + omega[1] * omega[2]
-			m3n3 = omega[0] * omega[1] * omega[2]
-			self.m1 = m1n1 * np.ones(dim)
-			self.m2 = m2n2 * np.ones(dim)
-			self.m3 = m3n3 * np.ones(dim)
-			self.n1 = m1n1 * np.ones(dim)
-			self.n2 = m2n2 * np.ones(dim)
-			self.n3 = m3n3 * np.ones(dim)
+			for i in range(dim):
+				_omega = omega[i]
+				m1n1 = _omega[0] + _omega[1] + _omega[2]
+				m2n2 = _omega[0] * _omega[1] + _omega[0] * _omega[2] + _omega[1] * _omega[2]
+				m3n3 = _omega[0] * _omega[1] * _omega[2]
+				self.m1[i] = m1n1
+				self.m2[i] = m2n2
+				self.m3[i] = m3n3
+				self.n1[i] = m1n1
+				self.n2[i] = m2n2
+				self.n3[i] = m3n3
 		else:
 			self.m1 = np.array(m1)
 			self.m2 = np.array(m2)

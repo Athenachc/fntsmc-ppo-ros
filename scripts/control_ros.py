@@ -299,11 +299,11 @@ if __name__ == "__main__":
 					obs.set_init(x0=uav_ros.eta(), dx0=uav_ros.dot_eta(), syst_dynamic=syst_dynamic_out)
 				elif OBSERVER == 'rd3':
 					obs_xy = rd3(use_freq=True,
-								 omega=[1.0, 1.1, 1.2],	# [0.8, 0.78, 0.75]
+								 omega=[[1.0, 1.1, 1.2], [1.0, 1.1, 1.2]],	# [0.8, 0.78, 0.75]
 								 dim=2,
 								 dt=DT)
 					obs_z = rd3(use_freq=True,
-								omega=[1.2, 1.2, 1.2],
+								omega=[[1.2, 1.2, 1.2]],
 								dim=1,
 								dt=DT)
 					syst_dynamic_out = -uav_ros.kt / uav_ros.m * uav_ros.dot_eta() + uav_ros.A()
@@ -334,7 +334,7 @@ if __name__ == "__main__":
 			rax = 1.5
 			ray = 1.5
 			raz = 0.3
-			rapsi = deg2rad(15)
+			rapsi = deg2rad(10)
 			ref_amplitude = np.array([rax, ray, raz, rapsi])
 			ref, dot_ref, dot2_ref, dot3_ref = ref_uav(t_now,
 													   ref_amplitude,
