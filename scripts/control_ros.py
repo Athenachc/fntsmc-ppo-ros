@@ -274,7 +274,7 @@ if __name__ == "__main__":
 	OBSERVER = 'none'
 
 	ref_period = np.array([10, 10, 10, 10])  # xd yd zd psid 周期
-	ref_bias_a = np.array([2.8, 0, 1.13, deg2rad(0)])  # xd yd zd psid 幅值偏移
+	ref_bias_a = np.array([0, 0, 1.0, deg2rad(0)])  # xd yd zd psid 幅值偏移
 	ref_bias_phase = np.array([np.pi / 2, 0, 0, 0])  # xd yd zd psid 相位偏移
 
 	while not rospy.is_shutdown():
@@ -284,7 +284,7 @@ if __name__ == "__main__":
 			# ok = True
 			if ok:
 				print('OFFBOARD, start to initialize...')
-				uav_ros = UAV_ROS(m=1.0, g=9.8, kt=1e-3, dt=DT, time_max=30)	# 0.722
+				uav_ros = UAV_ROS(m=0.722, g=9.8, kt=1e-3, dt=DT, time_max=30)	# 0.722
 				controller = fntsmc_pos(pos_ctrl_param)
 				if OBSERVER == 'neso':
 					obs = neso(l1=np.array([0.1, 0.1, 0.2]),
@@ -327,12 +327,14 @@ if __name__ == "__main__":
 				print('time: ', t_now)
 
 			'''1. generate reference command and uncertainty'''
-			rax = max(min(0.24 * t_now, 0.), 0.)  # 1.5
-			ray = max(min(0.24 * t_now, 0.), 0.)  # 1.5
-			raz = max(min(0.06 * t_now, 0.), 0.)  # 0.3
-			# rax = ray = 1.5
-			# raz = 0.3
-			rapsi = max(min(deg2rad(10)/5 * t_now, deg2rad(0)), 0.0)  # pi / 3
+			# rax = max(min(0.24 * t_now, 1.5), 0.)  # 1.5
+			# ray = max(min(0.24 * t_now, 1.5), 0.)  # 1.5
+			# raz = max(min(0.06 * t_now, 0.3), 0.)  # 0.3
+			# rapsi = max(min(deg2rad(10) / 5 * t_now, deg2rad(15)), 0.0)  # pi / 3
+			rax = 1.5
+			ray = 1.5
+			raz = 0.3
+			rapsi = deg2rad(15)
 			ref_amplitude = np.array([rax, ray, raz, rapsi])
 			ref, dot_ref, dot2_ref, dot3_ref = ref_uav(t_now,
 													   ref_amplitude,
