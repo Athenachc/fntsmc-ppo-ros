@@ -41,6 +41,8 @@ def uo_2_ref_angle_throttle(control: np.ndarray,
     uz = control[2]
 
     uf = m * np.sqrt(ux ** 2 + uy ** 2 + (uz + g) ** 2)
+    # phi_d = np.arcsin(m * (ux * np.sin(psi_d) - uy * np.cos(psi_d)) / uf)
+    # theta_d = np.arctan((ux * np.cos(psi_d) + uy * np.sin(psi_d)) / (uz + g))
     phi_d = np.arcsin(m * (ux * np.sin(attitude[2]) - uy * np.cos(attitude[2])) / uf)
     theta_d = np.arctan((ux * np.cos(attitude[2]) + uy * np.sin(attitude[2])) / (uz + g))
 
