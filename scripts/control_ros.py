@@ -89,7 +89,7 @@ def thrust_2_throttle(thrust: float):
 
 	"""
 	'''线性模型'''
-	if UAS_GAZEBO:
+	if USE_GAZEBO:
 		k = 0.37 / 0.727 / 9.8
 	else:
 		k = 0.31 / 0.727 / 9.8
@@ -277,7 +277,7 @@ if __name__ == "__main__":
 	ref_bias_phase = np.array([np.pi / 2, 0, 0, 0])  # xd yd zd psid 相位偏移
 
 	''' 选择是否使用 Gazebo 仿真 '''
-	UAS_GAZEBO = True			# 使用gazebo时，无人机质量和悬停油门可能会不同
+	USE_GAZEBO = True			# 使用gazebo时，无人机质量和悬停油门可能会不同
 	''' 选择是否使用 Gazebo 仿真 '''
 
 	''' 选择不同的控制器 '''
@@ -359,6 +359,7 @@ if __name__ == "__main__":
 			dot2_eta_d = dot2_ref[0: 3]
 			e = uav_ros.eta() - eta_d
 			de = uav_ros.dot_eta() - dot_eta_d
+			psi_d = ref[3]
 
 			if OBSERVER == 'neso':
 				syst_dynamic = -uav_ros.kt / uav_ros.m * uav_ros.dot_eta() + uav_ros.A()
@@ -372,39 +373,41 @@ if __name__ == "__main__":
 				observe = np.zeros(3)
 
 			'''3. Update the parameters of FNTSMC if RL is used'''
-			if CONTROLLER == 'RL':
-				pos_s = np.concatenate((e, de))
-				param_pos = opt_pos.evaluate(pos_norm(pos_s))  # new position control parameter
-				controller.get_param_from_actor(param_pos, update_k2=False, update_z=False)  # update position control parameter
+			if CONTROLLER == 'PX4-PID':
+				pose.pose.position.x = ref[0]
+				pose.pose.position.y = ref[1]
+				pose.pose.position.z = ref[2]
+				local_pos_pub.publish(pose)
+				phi_d, theta_d = 0., 0.		# 缺省，无意义
+				uf = 0.						# 缺省，无意义
+			else:
+				if CONTROLLER == 'RL':
+					pos_s = np.concatenate((e, de))
+					param_pos = opt_pos.evaluate(pos_norm(pos_s))  # new position control parameter
+					controller.get_param_from_actor(param_pos, update_k2=False, update_z=False)  # update position control parameter
 
-			'''3. generate phi_d, theta_d, throttle'''
-			controller.control_update(uav_ros.kt, uav_ros.m, uav_ros.uav_vel(), e, de, dot_eta_d, dot2_eta_d, obs=observe)
-			# psi_d = np.arctan2(ref[1] - ref_bias_a[1], ref[0] - ref_bias_a[0])
-			psi_d = ref[3]
-			phi_d, theta_d, uf = uo_2_ref_angle_throttle(controller.control,
-														 uav_ros.uav_att(),
-														 psi_d,
-														 uav_ros.m,
-														 uav_ros.g,
-														 limit=[np.pi / 4, np.pi / 4],
-														 att_limitation=True)
+				'''3. generate phi_d, theta_d, throttle'''
+				controller.control_update(uav_ros.kt, uav_ros.m, uav_ros.uav_vel(), e, de, dot_eta_d, dot2_eta_d, obs=observe)
 
-			'''4. publish'''
-			ctrl_cmd.header.stamp = rospy.Time.now()
-			ctrl_cmd.type_mask = AttitudeTarget.IGNORE_ROLL_RATE + AttitudeTarget.IGNORE_PITCH_RATE + AttitudeTarget.IGNORE_YAW_RATE
-			cmd_q = tf.transformations.quaternion_from_euler(phi_d, theta_d, psi_d, axes='sxyz')
-			# cmd_q = euler_2_quaternion(phi_d, theta_d, psi_d)
-			ctrl_cmd.orientation.x = cmd_q[0]
-			ctrl_cmd.orientation.y = cmd_q[1]
-			ctrl_cmd.orientation.z = cmd_q[2]
-			ctrl_cmd.orientation.w = cmd_q[3]
-			ctrl_cmd.thrust = thrust_2_throttle(uf)
-			uav_att_throttle_pub.publish(ctrl_cmd)
+				phi_d, theta_d, uf = uo_2_ref_angle_throttle(controller.control,
+															 uav_ros.uav_att(),
+															 psi_d,
+															 uav_ros.m,
+															 uav_ros.g,
+															 limit=[np.pi / 4, np.pi / 4],
+															 att_limitation=True)
 
-			# pose.pose.position.x = ref[0]
-			# pose.pose.position.y = ref[1]
-			# pose.pose.position.z = ref[2]
-			# local_pos_pub.publish(pose)
+				'''4. publish'''
+				ctrl_cmd.header.stamp = rospy.Time.now()
+				ctrl_cmd.type_mask = AttitudeTarget.IGNORE_ROLL_RATE + AttitudeTarget.IGNORE_PITCH_RATE + AttitudeTarget.IGNORE_YAW_RATE
+				cmd_q = tf.transformations.quaternion_from_euler(phi_d, theta_d, psi_d, axes='sxyz')
+				# cmd_q = euler_2_quaternion(phi_d, theta_d, psi_d)
+				ctrl_cmd.orientation.x = cmd_q[0]
+				ctrl_cmd.orientation.y = cmd_q[1]
+				ctrl_cmd.orientation.z = cmd_q[2]
+				ctrl_cmd.orientation.w = cmd_q[3]
+				ctrl_cmd.thrust = thrust_2_throttle(uf)
+				uav_att_throttle_pub.publish(ctrl_cmd)
 
 			'''5. get new uav states from Gazebo'''
 			uav_ros.rk44(action=[phi_d, theta_d, uf], uav_state=uav_odom_2_uav_state(uav_odom))
