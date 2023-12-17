@@ -88,10 +88,13 @@ def thrust_2_throttle(thrust: float):
 	"""
 
 	"""
-	'''gazebo 线性模型'''
-	k = 0.31 / 0.727 / 9.8
+	'''线性模型'''
+	if UAS_GAZEBO:
+		k = 0.37 / 0.727 / 9.8
+	else:
+		k = 0.31 / 0.727 / 9.8
 	_throttle = max(min(k * thrust, 0.9), 0.10)
-	'''gazebo 线性模型'''
+	'''线性模型'''
 	return _throttle
 
 
@@ -269,13 +272,26 @@ if __name__ == "__main__":
 	pos_norm = get_normalizer_from_file(6, optPathPos, 'state_norm.csv')
 	'''load actor'''
 
-	# OBSERVER = 'rd3'
-	# OBSERVER = 'neso'
-	OBSERVER = 'none'
-
 	ref_period = np.array([10, 10, 10, 10])  # xd yd zd psid 周期
 	ref_bias_a = np.array([0, 0, 1.0, deg2rad(0)])  # xd yd zd psid 幅值偏移
 	ref_bias_phase = np.array([np.pi / 2, 0, 0, 0])  # xd yd zd psid 相位偏移
+
+	''' 选择是否使用 Gazebo 仿真 '''
+	UAS_GAZEBO = True			# 使用gazebo时，无人机质量和悬停油门可能会不同
+	''' 选择是否使用 Gazebo 仿真 '''
+
+	''' 选择不同的控制器 '''
+	# CONTROLLER = 'FNTSMC'
+	CONTROLLER = 'RL'
+	# CONTROLLER = 'PX4-PID'
+	# CONTROLLER = 'MPC'
+	''' 选择不同的控制器 '''
+
+	'''选择不同观测器'''
+	# OBSERVER = 'rd3'
+	# OBSERVER = 'neso'
+	OBSERVER = 'none'
+	'''选择不同观测器'''
 
 	while not rospy.is_shutdown():
 		t = rospy.Time.now().to_sec()
@@ -300,12 +316,10 @@ if __name__ == "__main__":
 				elif OBSERVER == 'rd3':
 					obs_xy = rd3(use_freq=True,
 								 omega=[[1.0, 1.1, 1.2], [1.0, 1.1, 1.2]],	# [0.8, 0.78, 0.75]
-								 dim=2,
-								 dt=DT)
+								 dim=2, dt=DT)
 					obs_z = rd3(use_freq=True,
 								omega=[[1.2, 1.2, 1.2]],
-								dim=1,
-								dt=DT)
+								dim=1, dt=DT)
 					syst_dynamic_out = -uav_ros.kt / uav_ros.m * uav_ros.dot_eta() + uav_ros.A()
 					obs_xy.set_init(e0=uav_ros.eta()[0:2], de0=uav_ros.dot_eta()[0:2], syst_dynamic=syst_dynamic_out[0:2])
 					obs_z.set_init(e0=uav_ros.eta()[2], de0=uav_ros.dot_eta()[2], syst_dynamic=syst_dynamic_out[2])
@@ -316,10 +330,7 @@ if __name__ == "__main__":
 
 				print('Control...')
 				t0 = rospy.Time.now().to_sec()
-				[uav_ros.x, uav_ros.y, uav_ros.z,
-				 uav_ros.vx, uav_ros.vy, uav_ros.vz,
-				 uav_ros.phi, uav_ros.theta, uav_ros.psi,
-				 uav_ros.p, uav_ros.q, uav_ros.r] = uav_odom_2_uav_state(uav_odom)
+				uav_ros.set_state(uav_odom_2_uav_state(uav_odom))
 				global_flag = 2
 		elif global_flag == 2:  # control
 			t_now = round(t - t0, 4)
@@ -360,8 +371,6 @@ if __name__ == "__main__":
 			else:
 				observe = np.zeros(3)
 
-			# CONTROLLER = 'FNTSMC'
-			CONTROLLER = 'RL'
 			'''3. Update the parameters of FNTSMC if RL is used'''
 			if CONTROLLER == 'RL':
 				pos_s = np.concatenate((e, de))
