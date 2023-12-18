@@ -73,20 +73,12 @@ class robust_differentiator_3rd:
 				 omega: Union[np.ndarray, list] = np.atleast_2d([0, 0, 0]),
 				 dim: int = 3,
 				 dt: float = 0.001):
-		self.m1 = np.array(m1)
-		self.m2 = np.array(m2)
-		self.m3 = np.array(m3)
-		self.n1 = np.array(n1)
-		self.n2 = np.array(n2)
-		self.n3 = np.array(n3)
-
-		self.m10 = np.zeros(dim)
-		self.m20 = np.zeros(dim)
-		self.m30 = np.zeros(dim)
-		self.n10 = np.zeros(dim)
-		self.n20 = np.zeros(dim)
-		self.n30 = np.zeros(dim)
-
+		self.m1 = np.zeros(dim)
+		self.m2 = np.zeros(dim)
+		self.m3 = np.zeros(dim)
+		self.n1 = np.zeros(dim)
+		self.n2 = np.zeros(dim)
+		self.n3 = np.zeros(dim)
 		self.a1 = 3. / 4.
 		self.a2 = 2. / 4.
 		self.a3 = 1. / 4.
@@ -99,12 +91,12 @@ class robust_differentiator_3rd:
 				m1n1 = _omega[0] + _omega[1] + _omega[2]
 				m2n2 = _omega[0] * _omega[1] + _omega[0] * _omega[2] + _omega[1] * _omega[2]
 				m3n3 = _omega[0] * _omega[1] * _omega[2]
-				self.m10[i] = m1n1
-				self.m20[i] = m2n2
-				self.m30[i] = m3n3
-				self.n10[i] = m1n1
-				self.n20[i] = m2n2
-				self.n30[i] = m3n3
+				self.m1[i] = m1n1
+				self.m2[i] = m2n2
+				self.m3[i] = m3n3
+				self.n1[i] = m1n1
+				self.n2[i] = m2n2
+				self.n3[i] = m3n3
 		else:
 			self.m1 = np.array(m1)
 			self.m2 = np.array(m2)
@@ -147,28 +139,9 @@ class robust_differentiator_3rd:
 		return np.array(res)
 
 	def observe(self, syst_dynamic: Union[np.ndarray, list], e: Union[np.ndarray, list], t: float):
-		# t_max = -1
-		# if t < t_max:
-		# 	self.m1 = self.m10.copy() * t / t_max
-		# 	self.m2 = self.m20.copy() * t / t_max
-		# 	self.m3 = self.m30.copy() * t / t_max
-		# 	self.n1 = self.n10.copy() * t / t_max
-		# 	self.n2 = self.n20.copy() * t / t_max
-		# 	self.n3 = self.n30.copy() * t / t_max
-		# else:
-		# 	self.m1 = self.m10.copy()
-		# 	self.m2 = self.m20.copy()
-		# 	self.m3 = self.m30.copy()
-		# 	self.n1 = self.n10.copy()
-		# 	self.n2 = self.n20.copy()
-		# 	self.n3 = self.n30.copy()
-
-		self.m1 = self.m10.copy()
-		self.m2 = self.m20.copy()
-		self.m3 = self.m30.copy()
-		self.n1 = self.n10.copy()
-		self.n2 = self.n20.copy()
-		self.n3 = self.n30.copy()
+		t_max = 5
+		if t >= 5.:
+			pass
 
 		obs_e = e - self.z1
 		self.dz1 = self.z2 + self.m1 * self.sig(obs_e, self.a1) + self.n1 * self.sig(obs_e, self.b1)

@@ -97,7 +97,7 @@ class fntsmc_pos:
         self.so = self.sigma_o + self.lmd * self.sigma_o1
         self.control = param.ctrl0
 
-    def get_param_from_actor(self, action_from_actor: np.ndarray, update_k2: bool = True, update_z: bool = False):
+    def get_param_from_actor(self, action_from_actor: np.ndarray, update_k2: bool = False, update_z: bool = False):
         """
         @param action_from_actor:
         @return:

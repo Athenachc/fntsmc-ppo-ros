@@ -157,13 +157,13 @@ global_flag = 0  # UAV working mode monitoring
 '''Parameter list of the position controller'''
 DT = 0.01
 pos_ctrl_param = fntsmc_param()
-pos_ctrl_param.k1 = np.array([1.2, 0.8, 4.0])
-pos_ctrl_param.k2 = np.array([0.6, 1.0, 0.5])
-pos_ctrl_param.alpha = np.array([1.2, 1.5, 2.5])  # 原来 alpha_z = 1.2, 1.5, 1.2
-pos_ctrl_param.beta = np.array([0.6, 0.6, 0.75])  # 原来 beta_z = 0.8
-pos_ctrl_param.gamma = np.array([0.2, 0.2, 0.2])	# 昨晚 2 2 0.2
-pos_ctrl_param.lmd = np.array([2.0, 2.0, 2.0])
-pos_ctrl_param.vel_c = np.array([0., 0., 0.0])  # 0.05, 0.05, -0.005
+pos_ctrl_param.k1 = np.array([0.2, 0.4, 2.5])		# optimal: 1.2, 0.8, 4.0
+pos_ctrl_param.k2 = np.array([0.5, 0.8, 0.5])		# optimal: .6, 1.0, 0.5
+pos_ctrl_param.alpha = np.array([1.2, 1.5, 2.5])	# optimal: 1.2, 1.5, 2.5
+pos_ctrl_param.beta = np.array([0.6, 0.6, 0.75])	# optimal: 0.6, 0.6, 0.75
+pos_ctrl_param.gamma = np.array([0.2, 0.2, 0.2])	# optimal: 0.2, 0.2, 0.2
+pos_ctrl_param.lmd = np.array([1.0, 1.0, 1.0])		# optimal: 2.0, 2.0, 2.0
+pos_ctrl_param.vel_c = np.array([0., 0., 0.0])
 # pos_ctrl_param.vel_c = np.array([0.3, 0.4, 0.0])  # 0.05, 0.05, -0.005	昨晚gazebo
 pos_ctrl_param.acc_c = np.array([0., 0., 0.])
 pos_ctrl_param.dim = 3
@@ -272,12 +272,12 @@ if __name__ == "__main__":
 	pos_norm = get_normalizer_from_file(6, optPathPos, 'state_norm.csv')
 	'''load actor'''
 
-	ref_period = np.array([10, 10, 10, 10])  # xd yd zd psid 周期
-	ref_bias_a = np.array([0, 0, 1.0, deg2rad(0)])  # xd yd zd psid 幅值偏移
+	ref_period = np.array([8, 8, 10, 10])  # xd yd zd psid 周期
+	ref_bias_a = np.array([-3, 1.5, 0.3, deg2rad(0)])  # xd yd zd psid 幅值偏移
 	ref_bias_phase = np.array([np.pi / 2, 0, 0, 0])  # xd yd zd psid 相位偏移
 
 	''' 选择是否使用 Gazebo 仿真 '''
-	USE_GAZEBO = True			# 使用gazebo时，无人机质量和悬停油门可能会不同
+	USE_GAZEBO = False			# 使用gazebo时，无人机质量和悬停油门可能会不同
 	''' 选择是否使用 Gazebo 仿真 '''
 
 	''' 选择不同的控制器 '''
@@ -288,19 +288,22 @@ if __name__ == "__main__":
 	''' 选择不同的控制器 '''
 
 	'''选择不同观测器'''
-	# OBSERVER = 'rd3'
+	OBSERVER = 'rd3'
 	# OBSERVER = 'neso'
-	OBSERVER = 'none'
+	# OBSERVER = 'none'
 	'''选择不同观测器'''
 
+	t_init = rospy.Time.now().to_sec()
 	while not rospy.is_shutdown():
 		t = rospy.Time.now().to_sec()
 		if global_flag == 1:  # approaching
-			approaching_flag, ok = approaching(t0, approaching_flag, 10.0)
+			approaching_flag, ok = approaching(t0, approaching_flag, 5.0)
+			if t- t_init > 8:
+				ok = True
 			# ok = True
 			if ok:
 				print('OFFBOARD, start to initialize...')
-				uav_ros = UAV_ROS(m=0.722, g=9.8, kt=1e-3, dt=DT, time_max=30)	# 0.722
+				uav_ros = UAV_ROS(m=1.0, g=9.8, kt=1e-3, dt=DT, time_max=30)	# 0.722
 				controller = fntsmc_pos(pos_ctrl_param)
 				if OBSERVER == 'neso':
 					obs = neso(l1=np.array([0.1, 0.1, 0.2]),
@@ -314,15 +317,13 @@ if __name__ == "__main__":
 					syst_dynamic_out = -uav_ros.kt / uav_ros.m * uav_ros.dot_eta() + uav_ros.A()
 					obs.set_init(x0=uav_ros.eta(), dx0=uav_ros.dot_eta(), syst_dynamic=syst_dynamic_out)
 				elif OBSERVER == 'rd3':
-					obs_xy = rd3(use_freq=True,
-								 omega=[[1.0, 1.1, 1.2], [1.0, 1.1, 1.2]],	# [0.8, 0.78, 0.75]
-								 dim=2, dt=DT)
-					obs_z = rd3(use_freq=True,
-								omega=[[1.2, 1.2, 1.2]],
-								dim=1, dt=DT)
+					obs = rd3(use_freq=True,
+			   				  omega=[[0.4, 0.4, 0.4], 
+				                     [1.2, 1.2, 1.2],
+									 [1.0, 1.0, 1.0]],
+							  dim=3, dt=DT)
 					syst_dynamic_out = -uav_ros.kt / uav_ros.m * uav_ros.dot_eta() + uav_ros.A()
-					obs_xy.set_init(e0=uav_ros.eta()[0:2], de0=uav_ros.dot_eta()[0:2], syst_dynamic=syst_dynamic_out[0:2])
-					obs_z.set_init(e0=uav_ros.eta()[2], de0=uav_ros.dot_eta()[2], syst_dynamic=syst_dynamic_out[2])
+					obs.set_init(e0=uav_ros.eta(), de0=uav_ros.dot_eta(), syst_dynamic=syst_dynamic_out)
 				else:
 					pass
 
@@ -342,11 +343,14 @@ if __name__ == "__main__":
 			# ray = max(min(0.24 * t_now, 1.5), 0.)  # 1.5
 			# raz = max(min(0.06 * t_now, 0.3), 0.)  # 0.3
 			# rapsi = max(min(deg2rad(10) / 5 * t_now, deg2rad(15)), 0.0)  # pi / 3
-			rax = 1.5
-			ray = 1.5
-			raz = 0.3
-			rapsi = deg2rad(10)
+			rax = 0.
+			ray = 0.
+			raz = 0.
+			rapsi = deg2rad(0)
 			ref_amplitude = np.array([rax, ray, raz, rapsi])
+			ref_period = np.array([8, 8, 10, 10])  # xd yd zd psid 周期
+			ref_bias_a = np.array([0, 0, 1.1, deg2rad(0)])  # xd yd zd psid 幅值偏移
+			ref_bias_phase = np.array([np.pi / 2, 0, 0, 0])  # xd yd zd psid 相位偏移
 			ref, dot_ref, dot2_ref, dot3_ref = ref_uav(t_now,
 													   ref_amplitude,
 													   ref_period,
@@ -366,9 +370,7 @@ if __name__ == "__main__":
 				observe, _ = obs.observe(x=uav_ros.eta(), syst_dynamic=syst_dynamic)
 			elif OBSERVER == 'rd3':
 				syst_dynamic = -uav_ros.kt / uav_ros.m * uav_ros.dot_eta() + uav_ros.A()
-				observe_xy, _ = obs_xy.observe(e=uav_ros.eta()[0:2], syst_dynamic=syst_dynamic[0:2])
-				observe_z, _ = obs_z.observe(e=uav_ros.eta()[2], syst_dynamic=syst_dynamic[2])
-				observe = np.concatenate((observe_xy, observe_z))
+				observe, _ = obs.observe(e=uav_ros.eta(), syst_dynamic=syst_dynamic, t=t_now)
 			else:
 				observe = np.zeros(3)
 
