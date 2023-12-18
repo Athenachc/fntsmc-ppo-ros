@@ -157,8 +157,8 @@ global_flag = 0  # UAV working mode monitoring
 '''Parameter list of the position controller'''
 DT = 0.01
 pos_ctrl_param = fntsmc_param()
-pos_ctrl_param.k1 = np.array([0.2, 0.4, 2.5])		# optimal: 1.2, 0.8, 4.0
-pos_ctrl_param.k2 = np.array([0.5, 0.8, 0.5])		# optimal: .6, 1.0, 0.5
+pos_ctrl_param.k1 = np.array([1.2, 0.8, 4.0])		# optimal: 1.2, 0.8, 4.0
+pos_ctrl_param.k2 = np.array([0.6, 1.0, 0.5])		# optimal: .6, 1.0, 0.5
 pos_ctrl_param.alpha = np.array([1.2, 1.5, 2.5])	# optimal: 1.2, 1.5, 2.5
 pos_ctrl_param.beta = np.array([0.6, 0.6, 0.75])	# optimal: 0.6, 0.6, 0.75
 pos_ctrl_param.gamma = np.array([0.2, 0.2, 0.2])	# optimal: 0.2, 0.2, 0.2
@@ -273,7 +273,7 @@ if __name__ == "__main__":
 	'''load actor'''
 
 	ref_period = np.array([8, 8, 10, 10])  # xd yd zd psid 周期
-	ref_bias_a = np.array([-3, 1.5, 0.3, deg2rad(0)])  # xd yd zd psid 幅值偏移
+	ref_bias_a = np.array([0., 0., 1.0, deg2rad(0)])  # xd yd zd psid 幅值偏移
 	ref_bias_phase = np.array([np.pi / 2, 0, 0, 0])  # xd yd zd psid 相位偏移
 
 	''' 选择是否使用 Gazebo 仿真 '''
@@ -319,8 +319,8 @@ if __name__ == "__main__":
 				elif OBSERVER == 'rd3':
 					obs = rd3(use_freq=True,
 			   				  omega=[[0.4, 0.4, 0.4], 
-				                     [1.2, 1.2, 1.2],
-									 [1.0, 1.0, 1.0]],
+				                     [0.5, 0.5, 0.5],
+									 [0.8, 0.8, 0.8]],
 							  dim=3, dt=DT)
 					syst_dynamic_out = -uav_ros.kt / uav_ros.m * uav_ros.dot_eta() + uav_ros.A()
 					obs.set_init(e0=uav_ros.eta(), de0=uav_ros.dot_eta(), syst_dynamic=syst_dynamic_out)
@@ -343,13 +343,13 @@ if __name__ == "__main__":
 			# ray = max(min(0.24 * t_now, 1.5), 0.)  # 1.5
 			# raz = max(min(0.06 * t_now, 0.3), 0.)  # 0.3
 			# rapsi = max(min(deg2rad(10) / 5 * t_now, deg2rad(15)), 0.0)  # pi / 3
-			rax = 0.
-			ray = 0.
-			raz = 0.
+			rax = 1.5
+			ray = 1.5
+			raz = 0.3
 			rapsi = deg2rad(0)
 			ref_amplitude = np.array([rax, ray, raz, rapsi])
 			ref_period = np.array([8, 8, 10, 10])  # xd yd zd psid 周期
-			ref_bias_a = np.array([0, 0, 1.1, deg2rad(0)])  # xd yd zd psid 幅值偏移
+			ref_bias_a = np.array([0, 0, 1.0, deg2rad(0)])  # xd yd zd psid 幅值偏移
 			ref_bias_phase = np.array([np.pi / 2, 0, 0, 0])  # xd yd zd psid 相位偏移
 			ref, dot_ref, dot2_ref, dot3_ref = ref_uav(t_now,
 													   ref_amplitude,
@@ -386,7 +386,7 @@ if __name__ == "__main__":
 				if CONTROLLER == 'RL':
 					pos_s = np.concatenate((e, de))
 					param_pos = opt_pos.evaluate(pos_norm(pos_s))  # new position control parameter
-					controller.get_param_from_actor(param_pos, update_k2=False, update_z=False)  # update position control parameter
+					controller.get_param_from_actor(param_pos, update_k2=False, update_z=True)  # update position control parameter
 
 				'''3. generate phi_d, theta_d, throttle'''
 				controller.control_update(uav_ros.kt, uav_ros.m, uav_ros.uav_vel(), e, de, dot_eta_d, dot2_eta_d, obs=observe)
