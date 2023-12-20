@@ -146,23 +146,7 @@ class robust_differentiator_3rd:
 				res.append(np.fabs(xi[i]) ** a * np.sign(xi[i]))
 		return np.array(res)
 
-	def observe(self, syst_dynamic: Union[np.ndarray, list], e: Union[np.ndarray, list], t: float):
-		# t_max = -1
-		# if t < t_max:
-		# 	self.m1 = self.m10.copy() * t / t_max
-		# 	self.m2 = self.m20.copy() * t / t_max
-		# 	self.m3 = self.m30.copy() * t / t_max
-		# 	self.n1 = self.n10.copy() * t / t_max
-		# 	self.n2 = self.n20.copy() * t / t_max
-		# 	self.n3 = self.n30.copy() * t / t_max
-		# else:
-		# 	self.m1 = self.m10.copy()
-		# 	self.m2 = self.m20.copy()
-		# 	self.m3 = self.m30.copy()
-		# 	self.n1 = self.n10.copy()
-		# 	self.n2 = self.n20.copy()
-		# 	self.n3 = self.n30.copy()
-
+	def observe(self, syst_dynamic: Union[np.ndarray, list], e: Union[np.ndarray, list]):
 		self.m1 = self.m10.copy()
 		self.m2 = self.m20.copy()
 		self.m3 = self.m30.copy()

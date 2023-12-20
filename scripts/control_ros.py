@@ -115,7 +115,9 @@ def approaching(_t: float, ap_flag: bool, threshold: float):
 	uav_pos = uav_state[0:3]
 	local_pos_pub.publish(pose)
 	_bool = False
-	if (np.linalg.norm(_ref[0: 3] - uav_pos) < 0.25) and (np.linalg.norm(_ref[3] - uav_state[8]) < deg2rad(5)):
+	if (np.linalg.norm(_ref[0: 3] - uav_pos) < 0.3) and \
+	   (np.linalg.norm(_ref[3] - uav_state[8]) < deg2rad(5)) and \
+	   (np.linalg.norm(uav_state[3: 6]) < 0.05):
 		if ap_flag:
 			_bool = True if rospy.Time.now().to_sec() - _t >= threshold else False
 		else:
@@ -154,23 +156,41 @@ global_flag = 0  # UAV working mode monitoring
 # 3: finish and switch to OFFBOARD-position
 '''Some pre-defined parameters'''
 
-'''Parameter list of the position controller'''
+# '''Parameter list of the position controller 跟踪'''
+# DT = 0.01
+# pos_ctrl_param = fntsmc_param()
+# pos_ctrl_param.k1 = np.array([1.2, 0.8, 4.0])		# optimal: 1.2, 0.8, 4.0
+# pos_ctrl_param.k2 = np.array([1.4, 1.8, 0.9])		# optimal: .6, 1.0, 0.5
+# pos_ctrl_param.alpha = np.array([1.2, 1.5, 2.5])	# optimal: 1.2, 1.5, 2.5
+# pos_ctrl_param.beta = np.array([0.6, 0.9, 0.75])	# optimal: 0.6, 0.6, 0.75
+# pos_ctrl_param.gamma = np.array([0.2, 0.2, 0.2])	# optimal: 0.2, 0.2, 0.2
+# pos_ctrl_param.lmd = np.array([1.0, 1.0, 1.0])		# optimal: 2.0, 2.0, 2.0
+# pos_ctrl_param.vel_c = np.array([0.18, 0.2, 0.3])
+# # pos_ctrl_param.vel_c = np.array([0.3, 0.4, 0.0])  # 0.05, 0.05, -0.005	昨晚gazebo
+# pos_ctrl_param.acc_c = np.array([0.5, 0.5, 0.])
+# pos_ctrl_param.dim = 3
+# pos_ctrl_param.dt = DT
+# pos_ctrl_param.ctrl0 = np.array([0., 0., 0.])
+# pos_ctrl_param.saturation = np.array([np.inf, np.inf, np.inf])
+# '''Parameter list of the position controller 跟踪'''
+
+'''Parameter list of the position controller 定点'''
 DT = 0.01
 pos_ctrl_param = fntsmc_param()
 pos_ctrl_param.k1 = np.array([1.2, 0.8, 4.0])		# optimal: 1.2, 0.8, 4.0
 pos_ctrl_param.k2 = np.array([0.6, 1.0, 0.5])		# optimal: .6, 1.0, 0.5
 pos_ctrl_param.alpha = np.array([1.2, 1.5, 2.5])	# optimal: 1.2, 1.5, 2.5
-pos_ctrl_param.beta = np.array([0.6, 0.6, 0.75])	# optimal: 0.6, 0.6, 0.75
+pos_ctrl_param.beta = np.array([0.6, 0.9, 0.75])	# optimal: 0.6, 0.6, 0.75
 pos_ctrl_param.gamma = np.array([0.2, 0.2, 0.2])	# optimal: 0.2, 0.2, 0.2
 pos_ctrl_param.lmd = np.array([1.0, 1.0, 1.0])		# optimal: 2.0, 2.0, 2.0
-pos_ctrl_param.vel_c = np.array([0., 0., 0.0])
-# pos_ctrl_param.vel_c = np.array([0.3, 0.4, 0.0])  # 0.05, 0.05, -0.005	昨晚gazebo
+pos_ctrl_param.vel_c = np.array([0., 0., 0.3])
 pos_ctrl_param.acc_c = np.array([0., 0., 0.])
 pos_ctrl_param.dim = 3
 pos_ctrl_param.dt = DT
 pos_ctrl_param.ctrl0 = np.array([0., 0., 0.])
 pos_ctrl_param.saturation = np.array([np.inf, np.inf, np.inf])
-'''Parameter list of the position controller'''
+'''Parameter list of the position controller 定点'''
+
 
 if __name__ == "__main__":
 	rospy.init_node("offb_node_py")  # 初始化一个节点
@@ -272,8 +292,8 @@ if __name__ == "__main__":
 	pos_norm = get_normalizer_from_file(6, optPathPos, 'state_norm.csv')
 	'''load actor'''
 
-	ref_period = np.array([8, 8, 10, 10])  # xd yd zd psid 周期
-	ref_bias_a = np.array([0., 0., 1.0, deg2rad(0)])  # xd yd zd psid 幅值偏移
+	ref_period = np.array([8, 8, 10, 15])  # xd yd zd psid 周期
+	ref_bias_a = np.array([0.2, 0.2, 0.3, deg2rad(0)])  # xd yd zd psid 幅值偏移
 	ref_bias_phase = np.array([np.pi / 2, 0, 0, 0])  # xd yd zd psid 相位偏移
 
 	''' 选择是否使用 Gazebo 仿真 '''
@@ -298,12 +318,12 @@ if __name__ == "__main__":
 		t = rospy.Time.now().to_sec()
 		if global_flag == 1:  # approaching
 			approaching_flag, ok = approaching(t0, approaching_flag, 5.0)
-			if t- t_init > 8:
-				ok = True
-			# ok = True
-			if ok:
+			ok2 = False
+			if t- t_init > 5:
+				ok2 = True
+			if ok and ok2:
 				print('OFFBOARD, start to initialize...')
-				uav_ros = UAV_ROS(m=1.0, g=9.8, kt=1e-3, dt=DT, time_max=30)	# 0.722
+				uav_ros = UAV_ROS(m=0.722, g=9.8, kt=1e-3, dt=DT, time_max=30)	# 0.722
 				controller = fntsmc_pos(pos_ctrl_param)
 				if OBSERVER == 'neso':
 					obs = neso(l1=np.array([0.1, 0.1, 0.2]),
@@ -318,9 +338,9 @@ if __name__ == "__main__":
 					obs.set_init(x0=uav_ros.eta(), dx0=uav_ros.dot_eta(), syst_dynamic=syst_dynamic_out)
 				elif OBSERVER == 'rd3':
 					obs = rd3(use_freq=True,
-			   				  omega=[[0.4, 0.4, 0.4], 
-				                     [0.5, 0.5, 0.5],
-									 [0.8, 0.8, 0.8]],
+			   				  omega=[[0.9, 0.9, 0.9], 
+				                     [0.9, 0.9, 0.9],
+									 [0.9, 0.9, 0.9]],
 							  dim=3, dt=DT)
 					syst_dynamic_out = -uav_ros.kt / uav_ros.m * uav_ros.dot_eta() + uav_ros.A()
 					obs.set_init(e0=uav_ros.eta(), de0=uav_ros.dot_eta(), syst_dynamic=syst_dynamic_out)
@@ -339,17 +359,17 @@ if __name__ == "__main__":
 				print('time: ', t_now)
 
 			'''1. generate reference command and uncertainty'''
-			# rax = max(min(0.24 * t_now, 1.5), 0.)  # 1.5
-			# ray = max(min(0.24 * t_now, 1.5), 0.)  # 1.5
-			# raz = max(min(0.06 * t_now, 0.3), 0.)  # 0.3
-			# rapsi = max(min(deg2rad(10) / 5 * t_now, deg2rad(15)), 0.0)  # pi / 3
-			rax = 1.5
-			ray = 1.5
-			raz = 0.3
+			# rax = max(min(0.4 * t_now, 1.3), 0.)  # 1.5
+			# ray = max(min(0.4 * t_now, 1.3), 0.)  # 1.5
+			# raz = max(min(0.075 * t_now, 0.3), 0.)  # 0.3
+			# rapsi = max(min(deg2rad(10) / 5 * t_now, deg2rad(10)), 0.0)  # pi / 3
+			rax = 0.
+			ray = 0.
+			raz = 0.
 			rapsi = deg2rad(0)
 			ref_amplitude = np.array([rax, ray, raz, rapsi])
-			ref_period = np.array([8, 8, 10, 10])  # xd yd zd psid 周期
-			ref_bias_a = np.array([0, 0, 1.0, deg2rad(0)])  # xd yd zd psid 幅值偏移
+			ref_period = np.array([8, 8, 10, 15])  # xd yd zd psid 周期
+			ref_bias_a = np.array([0, 0, 1.1, deg2rad(0)])  # xd yd zd psid 幅值偏移
 			ref_bias_phase = np.array([np.pi / 2, 0, 0, 0])  # xd yd zd psid 相位偏移
 			ref, dot_ref, dot2_ref, dot3_ref = ref_uav(t_now,
 													   ref_amplitude,
@@ -370,7 +390,7 @@ if __name__ == "__main__":
 				observe, _ = obs.observe(x=uav_ros.eta(), syst_dynamic=syst_dynamic)
 			elif OBSERVER == 'rd3':
 				syst_dynamic = -uav_ros.kt / uav_ros.m * uav_ros.dot_eta() + uav_ros.A()
-				observe, _ = obs.observe(e=uav_ros.eta(), syst_dynamic=syst_dynamic, t=t_now)
+				observe, _ = obs.observe(e=uav_ros.eta(), syst_dynamic=syst_dynamic)
 			else:
 				observe = np.zeros(3)
 
@@ -386,7 +406,7 @@ if __name__ == "__main__":
 				if CONTROLLER == 'RL':
 					pos_s = np.concatenate((e, de))
 					param_pos = opt_pos.evaluate(pos_norm(pos_s))  # new position control parameter
-					controller.get_param_from_actor(param_pos, update_k2=False, update_z=True)  # update position control parameter
+					controller.get_param_from_actor(param_pos, update_k2=False, update_z=False)  # update position control parameter
 
 				'''3. generate phi_d, theta_d, throttle'''
 				controller.control_update(uav_ros.kt, uav_ros.m, uav_ros.uav_vel(), e, de, dot_eta_d, dot2_eta_d, obs=observe)
@@ -396,7 +416,7 @@ if __name__ == "__main__":
 															 psi_d,
 															 uav_ros.m,
 															 uav_ros.g,
-															 limit=[np.pi / 4, np.pi / 4],
+															 limit=[np.pi / 6, np.pi / 6],
 															 att_limitation=True)
 
 				'''4. publish'''
