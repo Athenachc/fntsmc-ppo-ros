@@ -458,6 +458,7 @@ if __name__ == "__main__":
 			pose.pose.position.y = 0
 			pose.pose.position.z = 0.5
 			local_pos_pub.publish(pose)
+			print('finish, back to [0,0,0.5]')
 		else:
 			pose.pose.position.x = 0
 			pose.pose.position.y = 0
