@@ -324,7 +324,7 @@ if __name__ == "__main__":
 				ok2 = True
 			if ok and ok2:
 				print('OFFBOARD, start to initialize...')
-				uav_ros = UAV_ROS(m=0.722, g=9.8, kt=1e-3, dt=DT, time_max=30)	# 0.722
+				uav_ros = UAV_ROS(m=1.5, g=9.8, kt=1e-3, dt=DT, time_max=30)	# 0.722
 				controller = fntsmc_pos(pos_ctrl_param)
 				if OBSERVER == 'neso':
 					obs = neso(l1=np.array([0.1, 0.1, 0.2]),
