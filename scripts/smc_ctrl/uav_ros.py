@@ -4,7 +4,7 @@ import os, sys
 sys.path.append(os.getcwd() + '/src/adp-smc-uav-ros/scripts/')
 sys.path.append(os.getcwd() + '/src/adp-smc-uav-ros/scripts/smc_ctrl/')
 
-from utils import *
+from smc_ctrl.utils import *
 
 
 class UAV_ROS:
@@ -104,6 +104,6 @@ class UAV_ROS:
 		return np.array([self.vx, self.vy, self.vz])
 
 	def A(self):
-		return self.throttle / self.m * np.array([np.cos(self.phi) * np.cos(self.psi) * np.sin(self.theta) + np.sin(self.phi) * np.sin(self.psi),
-												  np.cos(self.phi) * np.sin(self.psi) * np.sin(self.theta) - np.sin(self.phi) * np.cos(self.psi),
-												  np.cos(self.phi) * np.cos(self.theta)]) - np.array([0., 0., self.g])
+		return self.throttle / self.m * np.array([C(self.phi) * C(self.psi) * S(self.theta) + S(self.phi) * S(self.psi),
+												  C(self.phi) * S(self.psi) * S(self.theta) - S(self.phi) * C(self.psi),
+												  C(self.phi) * C(self.theta)]) - np.array([0., 0., self.g])
